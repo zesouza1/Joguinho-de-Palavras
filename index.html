@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jogo de Adivinhação de Palavras</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f4f4f4;
+    }
+    .container {
+        text-align: center;
+    }
+    input[type="text"] {
+        padding: 8px;
+        font-size: 16px;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Jogo de Adivinhação de Palavras</h1>
+    <p>Tente adivinhar a palavra com base na seguinte definição em inglês:</p>
+    <p id="definicao"></p>
+    <input type="text" id="tentativa" placeholder="Digite sua tentativa">
+    <button onclick="verificarTentativa()">Verificar</button>
+    <p id="resultado"></p>
+</div>
+
+<script>
+    async function obterPalavraAleatoria() {
+        try {
+            const response = await fetch("https://api.dicionario-aberto.net/random");
+            if (response.ok) {
+                const data = await response.json();
+                const palavra = data.word;
+                return palavra;
+                console.log(palavra);
+            } else {
+                console.error("Erro ao obter palavra aleatória:", response.statusText);
+                return null;
+            }
+        } catch (error) {
+            console.error("Erro ao obter palavra aleatória:", error);
+            return null;
+        }
+    }
+
+    async function traduzirPalavra(palavra) {
+        try {
+            const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=pt&tl=en&dt=t&q=${encodeURIComponent(palavra)}`);
+            if (response.ok) {
+                const data = await response.json();
+                return data[0][0][0]; // Retorna a tradução da palavra
+            } else {
+                console.error("Erro ao traduzir palavra:", response.statusText);
+                return null;
+            }
+        } catch (error) {
+            console.error("Erro ao traduzir palavra:", error);
+            return null;
+        }
+    }
+
+    async function obterDefinicaoEmIngles(palavra) {
+        try {
+            const palavraEmIngles = await traduzirPalavra(palavra);
+            if (!palavraEmIngles) return;
+
+            const apiKey = "d8b694fd5emshf0ff105f5547780p119fd6jsnff861dbd4c5c"; // Substitua pelo sua chave de API do RapidAPI (Mashape)
+            const response = await fetch(`https://wordsapiv1.p.rapidapi.com/words/${palavraEmIngles}/definitions`, {
+                method: 'GET',
+                headers: {
+                    'x-rapidapi-host': 'wordsapiv1.p.rapidapi.com',
+                    'x-rapidapi-key': apiKey
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.definitions && data.definitions.length > 0) {
+                    return data.definitions[0].definition; // Retorna a primeira definição em inglês
+                } else {
+                    console.error("Definição em inglês não encontrada para a palavra:", palavraEmIngles);
+                    return null;
+                }
+            } else {
+                console.error("Erro ao obter definição em inglês:", response.statusText);
+                return null;
+            }
+        } catch (error) {
+            console.error("Erro ao obter definição em inglês:", error);
+            return null;
+        }
+    }
+
+    let palavraCorreta;
+    async function jogarAdivinhacao() {
+        try {
+            const palavra = await obterPalavraAleatoria();
+            if (!palavra) return;
+
+            const definicao = await obterDefinicaoEmIngles(palavra);
+            if (!definicao) return;
+
+            document.getElementById("definicao").innerText = definicao;
+            palavraCorreta = palavra.toLowerCase();
+        } catch (error) {
+            console.error("Erro ao jogar o jogo de adivinhação:", error);
+        }
+    }
+
+    function verificarTentativa() {
+        const tentativa = document.getElementById("tentativa").value.trim().toLowerCase();
+        if (tentativa === palavraCorreta) {
+            document.getElementById("resultado").innerText = "Parabéns! Você acertou!";
+        } else {
+            document.getElementById("resultado").innerText = "Tente novamente. Essa não é a palavra correta.";
+        }
+    }
+
+    // Inicia o jogo quando a página carrega
+    window.onload = jogarAdivinhacao;
+</script>
+
+</body>
+</html>
